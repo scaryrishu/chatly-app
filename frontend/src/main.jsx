@@ -8,7 +8,7 @@ import { store, persistor } from './redux/store.js'
 import { SocketProvider } from './context/SocketContext.jsx'  // ← add
 import './index.css'
 
-export const serverUrl = 'http://localhost:5000'
+export const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
