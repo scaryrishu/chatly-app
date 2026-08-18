@@ -1,14 +1,15 @@
 import multer from "multer"
+import fs from "fs"
+import path from "path"
+
+const uploadDir = path.join(process.cwd(), "public")
+fs.mkdirSync(uploadDir, { recursive: true })
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "./public")   // temp folder — make sure it exists
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`)
-    }
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`)
+  }
 })
 
-const upload = multer({ storage })
-
-export default upload
+export default multer({ storage })
