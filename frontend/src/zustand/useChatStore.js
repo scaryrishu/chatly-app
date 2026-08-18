@@ -49,21 +49,23 @@ const useChatStore = create((set, get) => ({
 
   // Send a message
   sendMessage: async (receiverId, message) => {
-    try {
-      const result = await axios.post(
-        `${serverUrl}/api/message/send/${receiverId}`,
-        { message },
-        { withCredentials: true }
-      )
-      // Add new message to existing list
-      set((state) => ({
-        messages: [...state.messages, result.data]
-      }))
-    } catch (error) {
-      console.log("sendMessage error:", error)
-    }
-  },
+  try {
+    const result = await axios.post(
+      `${serverUrl}/api/message/send/${receiverId}`,
+      { message },
+      { withCredentials: true }
+    );
 
+    set((state) => ({
+      messages: [...state.messages, result.data]
+    }));
+
+    return result.data;
+  } catch (error) {
+    console.log("sendMessage error:", error);
+    throw error;
+  }
+},
   // Pull unread counts for every conversation — call once on login / app mount
   fetchUnreadCounts: async () => {
     try {
@@ -85,21 +87,33 @@ const useChatStore = create((set, get) => ({
   // Centralizing this here (instead of inside ChatArea) means the sidebar
   // gets unread updates even for chats that aren't currently open.
   receiveMessage: (newMessage) => {
-    const { selectedUser, messages, unreadCounts } = get()
+  const { selectedUser, messages, unreadCounts } = get()
 
-    if (selectedUser && newMessage.senderId === selectedUser._id) {
-      // that user's chat is open right now → just show it, no badge needed
-      set({ messages: [...messages, newMessage] })
-    } else {
-      // chat is closed → bump the unread badge for whoever sent it
-      set({
-        unreadCounts: {
-          ...unreadCounts,
-          [newMessage.senderId]: (unreadCounts[newMessage.senderId] || 0) + 1
-        }
-      })
-    }
-  },
+  const exists = messages.some(
+    (msg) => msg._id === newMessage._id
+  )
+
+  if (exists) {
+    return
+  }
+
+  if (
+    selectedUser &&
+    newMessage.senderId === selectedUser._id
+  ) {
+    set({
+      messages: [...messages, newMessage],
+    })
+  } else {
+    set({
+      unreadCounts: {
+        ...unreadCounts,
+        [newMessage.senderId]:
+          (unreadCounts[newMessage.senderId] || 0) + 1,
+      },
+    })
+  }
+},
 }))
 
 export default useChatStore
