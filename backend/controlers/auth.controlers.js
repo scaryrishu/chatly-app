@@ -5,6 +5,11 @@ import bcrypt from "bcryptjs"
 export const signUp = async (req, res) => {
     try {
         const { userName, email, password } = req.body
+
+        if(userName.length>14){
+            return res.status(400).json({message:"username must be less than 15 characters"})
+        }
+        
         const checkUserByUserName = await User.findOne({ userName })
         if (checkUserByUserName) {
             return res.status(400).json({ message: "userName already exist" })
@@ -20,14 +25,14 @@ export const signUp = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10)
 
         const user = await User.create({
-            userName, email, password: hashedPassword
+            userName, email, password: hashedPassword, name: userName
         })
 
         const token = await getToken(user._id)
 
         res.cookie("token", token, {
             httpOnly: true,
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 din likhne ka tarika
             sameSite: process.env.NODE_ENV === "production" ? "None" : "Strict",
             secure: process.env.NODE_ENV === "production"
         })

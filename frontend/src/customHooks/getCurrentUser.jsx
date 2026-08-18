@@ -20,7 +20,10 @@ const getCurrentUser = () => {
                 )
                 dispatch(setUserData(result.data))
             } catch (error) {
-                console.log("Error fetching user:", error)
+                // 400 here just means "not logged in yet" — expected, no need to log
+                if (error?.response?.status !== 400) {
+                    console.log("Error fetching user:", error)
+                }
             }
         }
 
