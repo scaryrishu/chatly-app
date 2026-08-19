@@ -48,12 +48,24 @@ const useChatStore = create((set, get) => ({
   },
 
   // Send a message
-  sendMessage: async (receiverId, message) => {
+  sendMessage: async (receiverId, message, imageFile) => {
   try {
+
+    let payload
+    const config = { withCredentials: true }
+
+    if (imageFile) {
+      payload = new FormData()
+      payload.append("message", message || "")
+      payload.append("image", imageFile)
+    } else {
+      payload = { message }
+    }
+
     const result = await axios.post(
       `${serverUrl}/api/message/send/${receiverId}`,
-      { message },
-      { withCredentials: true }
+      payload,
+      config
     );
 
     set((state) => ({

@@ -2,8 +2,9 @@ import { useSocket } from "../context/SocketContext";
 import React, { useState, useEffect, useRef } from "react";
 import useChatStore from "../zustand/useChatStore";
 import { useSelector } from "react-redux";
-import { Smile } from "lucide-react";
+import { Smile, Image as ImageIcon, X } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
+import toast from "react-hot-toast";
 
 function ChatArea() {
   const {
@@ -19,6 +20,10 @@ function ChatArea() {
   const [text, setText] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [viewImage, setViewImage] = useState(null);
+  const fileInputRef = useRef(null);
   const emojiRef = useRef(null);
   const bottomRef = useRef(null);
 
@@ -67,22 +72,51 @@ function ChatArea() {
   const handleSend = async () => {
     const message = text.trim();
 
-    if (!message || !selectedUser || isSending) return;
+    if ((!message && !imageFile) || !selectedUser || isSending) return;
 
     setText("");
+    const sentImageFile = imageFile;
+    removeImage();
     setIsSending(true);
 
     try {
-      await sendMessage(selectedUser._id, message);
+      await sendMessage(selectedUser._id, message, sentImageFile);
       setShowEmojiPicker(false);
     } catch (error) {
       console.error("Failed to send message:", error);
-
-      // Put message back if sending fails
       setText(message);
+      if (sentImageFile) {
+        setImageFile(sentImageFile);
+        setImagePreview(URL.createObjectURL(sentImageFile));
+      }
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+
+    const MAX_SIZE = 20 * 1024 * 1024; // keep in sync with backend multer limit
+    if (file.size > MAX_SIZE) {
+      toast.error("Image must be under 20MB");
+      return;
+    }
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const handleEmojiClick = (emojiData) => {
@@ -305,8 +339,7 @@ function ChatArea() {
                   max-w-[85%]
                   sm:max-w-[70%]
 
-                  px-3.5 py-2
-                  sm:px-4 sm:py-2
+                  ${msg.image ? "p-1.5" : "px-3.5 py-2 sm:px-4 sm:py-2"}
 
                   rounded-2xl
                   text-sm
@@ -314,16 +347,27 @@ function ChatArea() {
                   break-words
                   overflow-wrap-anywhere
 
-                  ${isMe
-                    ? "bg-[#20c7ff] text-white rounded-br-none"
-                    : "bg-[#1c2230] text-zinc-200 rounded-bl-none border border-white/5"
+                  ${msg.image
+                    ? "bg-[#161b22] border border-white/5"
+                    : isMe
+                      ? "bg-[#20c7ff] text-white rounded-br-none"
+                      : "bg-[#1c2230] text-zinc-200 rounded-bl-none border border-white/5"
                   }
                 `}
               >
-                <p className="break-words">
-                  {msg.message}
-                </p>
-
+                {msg.image && (
+                  <img
+                    src={msg.image}
+                    alt="attachment"
+                    onClick={() => setViewImage(msg.image)}
+                    className="max-w-full rounded-lg max-h-64 object-cover cursor-pointer hover:opacity-90 transition"
+                  />
+                )}
+                {msg.message && (
+                  <p className={`break-words ${msg.image ? "px-2 pt-1.5" : ""}`}>
+                    {msg.message}
+                  </p>
+                )}
                 <p
                   className={`
                     text-[9px]
@@ -349,6 +393,20 @@ function ChatArea() {
 
         <div ref={bottomRef} />
       </div>
+
+      {imagePreview && (
+        <div className="w-full px-3 sm:px-4 pt-2 bg-[#161b22] border-t border-white/5">
+          <div className="relative inline-block">
+            <img src={imagePreview} alt="preview" className="h-20 rounded-lg object-cover" />
+            <button
+              onClick={removeImage}
+              className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ================= MESSAGE INPUT ================= */}
 
@@ -408,6 +466,7 @@ function ChatArea() {
             />
           </button>
 
+
           {/* ================= EMOJI PICKER ================= */}
 
           {showEmojiPicker && (
@@ -458,6 +517,36 @@ function ChatArea() {
           )}
         </div>
 
+        {/* ================= Image Picker ================= */}
+
+        <input
+          type="file"
+          accept="
+                    image/png,
+                    image/jpeg,
+                    image/webp,
+                    image/gif,
+                    image/svg+xml,
+                    image/avif,
+                    image/bmp,
+                    image/tiff,
+                    image/x-icon,
+                    image/heic,
+                    image/heif
+                  "
+          ref={fileInputRef}
+          onChange={handleImageSelect}
+          className="hidden"
+        />
+
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-zinc-400 hover:text-[#20c7ff] hover:bg-white/5 active:bg-white/10 transition shrink-0"
+        >
+          <ImageIcon size={20} className="sm:w-[22px] sm:h-[22px]" />
+        </button>
+
         {/* ================= INPUT ================= */}
 
         <input
@@ -504,7 +593,7 @@ function ChatArea() {
 
         <button
           onClick={handleSend}
-          disabled={!text.trim() || isSending}
+          disabled={(!text.trim() && !imageFile) || isSending}
           className="
     w-10 h-10
     sm:w-11 sm:h-11
@@ -537,6 +626,40 @@ function ChatArea() {
           )}
         </button>
       </div>
+      {viewImage && (
+        <div
+          onClick={() => setViewImage(null)}
+          className="
+            fixed inset-0 z-[200]
+            bg-black/90
+            flex items-center justify-center
+            p-4
+            cursor-zoom-out
+          "
+        >
+          <button
+            onClick={() => setViewImage(null)}
+            className="
+              absolute top-4 right-4
+              w-9 h-9
+              flex items-center justify-center
+              rounded-full
+              bg-white/10 hover:bg-white/20
+              text-white text-xl
+              transition
+            "
+          >
+            &times;
+          </button>
+
+          <img
+            src={viewImage}
+            alt="full view"
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-full rounded-lg object-contain cursor-default"
+          />
+        </div>
+      )}
     </div>
   );
 }
