@@ -1,5 +1,6 @@
 import Message from "../models/message.model.js"
 import { getReceiverSocketId, io } from "../socket.js"
+import cloudinary from "../config/cloudinary.js"
 
 export const sendMessage = async (req, res) => {
     try {
@@ -7,14 +8,33 @@ export const sendMessage = async (req, res) => {
         const { receiverId } = req.params
         const { message } = req.body
 
-        if (!message || !message.trim()) {
-            return res.status(400).json({ message: "message is required" })
+        if ((!message || !message.trim()) && !req.file) {
+            return res.status(400).json({ message: "message or image is required" })
+        }
+
+                let imageUrl = ""
+        if (req.file) {
+            const uploadFromBuffer = () =>
+                new Promise((resolve, reject) => {
+                    const stream = cloudinary.uploader.upload_stream(
+                        { folder: "chatly_messages" },
+                        (error, result) => {
+                            if (error) reject(error)
+                            else resolve(result)
+                        }
+                    )
+                    stream.end(req.file.buffer)
+                })
+
+            const result = await uploadFromBuffer()
+            imageUrl = result.secure_url
         }
 
         const newMessage = await Message.create({
             senderId,
             receiverId,
-            message
+            message: message || "",
+            image: imageUrl
         })
 
         // If the receiver is online, push the message to them instantly

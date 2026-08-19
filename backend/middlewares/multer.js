@@ -1,15 +1,8 @@
 import multer from "multer"
-import fs from "fs"
-import path from "path"
 
-const uploadDir = path.join(process.cwd(), "public")
-fs.mkdirSync(uploadDir, { recursive: true })
+const storage = multer.memoryStorage()
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`)
-  }
+export default multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB cap, adjust as you like
 })
-
-export default multer({ storage })

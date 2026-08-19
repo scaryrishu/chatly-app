@@ -1,7 +1,6 @@
 
 import User from "../models/user.model.js"
 import bcrypt from "bcryptjs"
-import fs from "fs"
 import cloudinary from "../config/cloudinary.js"
 import Message from "../models/message.model.js"
 
@@ -109,13 +108,20 @@ export const editProfile = async (req, res) => {
         if (name !== undefined) updateData.name = name
 
         if (req.file) {
-            const result = await cloudinary.uploader.upload(req.file.path, {
-                folder: "chatly_profiles"
-            })
+            const uploadFromBuffer = () =>
+                new Promise((resolve, reject) => {
+                    const stream = cloudinary.uploader.upload_stream(
+                        { folder: "chatly_profiles" },
+                        (error, result) => {
+                            if (error) reject(error)
+                            else resolve(result)
+                        }
+                    )
+                    stream.end(req.file.buffer)
+                })
+
+            const result = await uploadFromBuffer()
             updateData.image = result.secure_url
-            fs.unlink(req.file.path, (err) => {
-                if (err) console.log("temp file cleanup error:", err.message)
-            })
         }
 
         const user = await User.findByIdAndUpdate(userId, updateData, {
