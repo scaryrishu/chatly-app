@@ -4,6 +4,7 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { serverUrl } from "../main.jsx";
 import { clearUserData } from "../redux/userSlice.js";
+import useChatStore from "../zustand/useChatStore.js";
 
 function DeleteAccountModal({ onClose }) {
   const [password, setPassword] = useState("");
@@ -24,6 +25,7 @@ function DeleteAccountModal({ onClose }) {
       });
 
       dispatch(clearUserData());
+      useChatStore.getState().resetChatStore();
       navigate("/login");
     } catch (error) {
       setErr(error?.response?.data?.message || "Something went wrong");

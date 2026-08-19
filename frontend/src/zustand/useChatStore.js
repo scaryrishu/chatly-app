@@ -8,6 +8,13 @@ const useChatStore = create((set, get) => ({
   messages: [],
   unreadCounts: {}, // { [userId]: count }
 
+  resetChatStore: () => set({
+    users: [],
+    selectedUser: null,
+    messages: [],
+    unreadCounts: {}
+  }),
+
   setUsers: (users) => set({ users }),
 
   setSelectedUser: (user) => {

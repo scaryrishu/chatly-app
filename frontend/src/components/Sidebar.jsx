@@ -70,6 +70,7 @@ function Sidebar() {
         { withCredentials: true },
       );
       dispatch(clearUserData());
+      useChatStore.getState().resetChatStore();
       navigate("/login");
     } catch (error) {
       console.log("Logout error:", error);
