@@ -16,7 +16,11 @@ export const getCurrentUser = async (req, res) => {
             return res.status(200).json(null)
         }
 
-        return res.status(200).json(user)
+        const userObj = user.toObject()
+        userObj.hasPassword = !!userObj.password
+        delete userObj.password
+
+        return res.status(200).json(userObj)
     } catch (error) {
         return res.status(500).json({ message: `current user error ${error}` })
     }
@@ -27,8 +31,8 @@ export const changePassword = async (req, res) => {
         const userId = req.userId
         const { oldPassword, newPassword } = req.body
 
-        if (!oldPassword || !newPassword) {
-            return res.status(400).json({ message: " both old and new password are required" })
+        if (!newPassword) {
+            return res.status(400).json({ message: "new password is required" })
         }
         if (newPassword.length < 6) {
             return res.status(400).json({ message: "new password must be atleast 6 characters" })
@@ -39,18 +43,25 @@ export const changePassword = async (req, res) => {
             return res.status(400).json({ message: "user not found" })
         }
 
-        const isMatch = await bcrypt.compare(oldPassword, user.password)
-        if (!isMatch) {
-            return res.status(400).json({ message: "old password is incorrect" })
-        }
-        if (oldPassword === newPassword) {
-            return res.status(400).json({ message: "new password must be different from old password" })
+        // Google-only accounts have no password yet — skip the old-password
+        // check and let them set one for the first time.
+        if (user.password) {
+            if (!oldPassword) {
+                return res.status(400).json({ message: "old password is required" })
+            }
+            const isMatch = await bcrypt.compare(oldPassword, user.password)
+            if (!isMatch) {
+                return res.status(400).json({ message: "old password is incorrect" })
+            }
+            if (oldPassword === newPassword) {
+                return res.status(400).json({ message: "new password must be different from old password" })
+            }
         }
 
         user.password = await bcrypt.hash(newPassword, 10)
         await user.save()
 
-        return res.status(200).json({ message: "password changed successfully" })
+        return res.status(200).json({ message: "password updated successfully" })
     } catch (error) {
         return res.status(500).json({ message: `change password error ${error}` })
     }

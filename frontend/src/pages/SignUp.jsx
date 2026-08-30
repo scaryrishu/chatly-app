@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { serverUrl } from "../main";
 import { useDispatch } from "react-redux";
 import { setUserData } from "../redux/userSlice.js";
+import { GoogleLogin } from "@react-oauth/google"
 
 function SignUp() {
   const navigate = useNavigate();
@@ -47,6 +48,23 @@ function SignUp() {
       setLoading(false);
     }
   };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setErr(""); setLoading(true)
+    try {
+      const result = await axios.post(
+        `${serverUrl}/api/auth/google`,
+        { credential: credentialResponse.credential },
+        { withCredentials: true },
+      )
+      dispatch(setUserData(result.data))
+      navigate("/")
+    } catch (error) {
+      setErr(error?.response?.data?.message || "Google login failed")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="w-full min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
@@ -111,6 +129,18 @@ function SignUp() {
           >
             {loading ? "Loading..." : "Sign Up"}
           </button>
+
+          <div className="w-full flex items-center gap-3 text-zinc-500 text-xs">
+            <div className="flex-1 h-px bg-white/10" /> OR <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setErr("Google login failed")}
+            theme="filled_black"
+            shape="pill"
+            width="100%"
+          />
 
           <p className="text-zinc-400 text-sm">
             Already have an account?
